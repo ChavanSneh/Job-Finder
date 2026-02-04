@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Streamlit secrets
+.streamlit/secrets.toml
+.streamlit/config.toml
+
+# Playwright browser binaries (don't upload 100MB+ of browsers!)
+pw-browser/
