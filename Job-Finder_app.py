@@ -1,141 +1,115 @@
 import streamlit as st
-from google import genai
-from google.genai import types
+import google.generativeai as genai
+import asyncio
+from playwright.async_api import async_playwright
 import os
-import io
-from docx import Document  # Ensure you ran: pip install python-docx
-from docx.shared import Pt
-from dotenv import load_dotenv
 
-# 1. BOOT SYSTEM & API
-load_dotenv()
-api_key = os.getenv("GEMINI_API_KEY")
+# 🛡️ SILENCE THE NOISE
+os.environ["PYTHONWARNINGS"] = "ignore"
 
-# Initialize Client with 2026 Preview Model support
-if api_key:
-    client = genai.Client(
-        api_key=api_key,
-        http_options=types.HttpOptions(api_version='v1beta')
-    )
+# --- 1. BRAIN CONFIGURATION (Gemini) ---
+# Pulling from your hidden .streamlit/secrets.toml
+if "GOOGLE_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    model = genai.GenerativeModel('gemini-1.5-flash')
 else:
-    st.error("🔑 API Key missing! Check your .env file.")
+    st.error("🚨 Boss, GOOGLE_API_KEY is missing from secrets.toml!")
     st.stop()
 
-# 2. WORD DOCUMENT GENERATOR
-def generate_word_report(shortlist):
-    doc = Document()
-    doc.add_heading('🛡️ My Warrior Job Shortlist', 0)
-    
-    for job in shortlist:
-        doc.add_heading('Opportunity Analysis', level=1)
+# --- 2. THE SCOUTER ENGINE (Playwright) ---
+async def scrape_indeed(url):
+    jobs = []
+    async with async_playwright() as p:
+        # Launching 'Ghost' browser for Linux/Codespaces
+        browser = await p.chromium.launch(headless=True)
+        page = await browser.new_page()
         
-        # Original Job Snippet
-        doc.add_heading('Job Snippet:', level=2)
-        doc.add_paragraph(job['Job_Content'])
+        try:
+            await page.goto(url, timeout=60000)
+            # Find job links using the common Indeed pattern
+            # Note: Indeed changes selectors often; this is the most stable 'anchor' strategy
+            links = await page.query_selector_all('a[href*="/rc/clk"]')
+            
+            for link in links[:10]: # Scrape top 10 for speed
+                title = await link.inner_text()
+                href = await link.get_attribute("href")
+                full_link = f"https://www.indeed.com{href}"
+                
+                if title and href:
+                    jobs.append({"title": title, "link": full_link})
+        except Exception as e:
+            st.sidebar.error(f"Scouter Shielded: {e}")
         
-        # AI Verdict and Email Plan
-        doc.add_heading('AI Strategy & Verdict:', level=2)
-        p = doc.add_paragraph(job['AI_Verdict'])
-        p.style.font.size = Pt(11)
-        
-        doc.add_page_break() # Fresh page for every job
-        
-    buffer = io.BytesIO()
-    doc.save(buffer)
-    buffer.seek(0)
-    return buffer
+        await browser.close()
+    return jobs
 
-# 3. SESSION MEMORY
-if 'job_queue' not in st.session_state: st.session_state.job_queue = []
-if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
-if 'shortlist' not in st.session_state: st.session_state.shortlist = []
+# --- 3. STATE MANAGEMENT ---
+if 'master_queue' not in st.session_state:
+    st.session_state.master_queue = []
+if 'shortlist' not in st.session_state:
+    st.session_state.shortlist = []
+if 'rejected_count' not in st.session_state:
+    st.session_state.rejected_count = 0
 
-# 4. UI LAYOUT
-st.set_page_config(page_title="Warrior Job Catcher", layout="wide", page_icon="🛡️")
+# --- 4. THE UI DASHBOARD ---
+st.title("⚔️ Job Warrior Factory")
 
-st.title("🛡️ Warrior Job Catcher v4.0")
-st.caption("Pune Regional Hub | Gemini 3 Flash | Word Export Enabled")
-
-# SIDEBAR: THE INPUT HUB
 with st.sidebar:
-    st.header("📥 Job Feed")
-    st.write("Target: 8.4 CGPA | Python Internships")
+    st.header("📊 Warehouse Stats")
+    col1, col2 = st.columns(2)
+    col1.metric("📦 Units", len(st.session_state.master_queue))
+    col2.metric("✅ Kept", len(st.session_state.shortlist))
+    st.write(f"❌ Discarded: {st.session_state.rejected_count}")
     
-    raw_input = st.text_area("Paste Jobs (Separator: '---')", height=300, 
-                             placeholder="Paste text here...")
-    
-    if st.button("🚀 Load Jobs", use_container_width=True):
-        jobs = [j.strip() for j in raw_input.split("---") if len(j.strip()) > 50]
-        st.session_state.job_queue = jobs
-        st.session_state.current_idx = 0
-        st.rerun()
-
     st.divider()
     
-    # THE DOWNLOAD HUB
-    if st.session_state.shortlist:
-        st.header("📋 Export Plan")
-        word_file = generate_word_report(st.session_state.shortlist)
-        st.download_button(
-            label="📥 Download as Word (.docx)",
-            data=word_file,
-            file_name="Pune_Internship_Battle_Plan.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            use_container_width=True
-        )
-
-# 5. THE ENGINE
-# --- UPDATED ANALYZER ENGINE (Overload-Proof) ---
-if st.session_state.job_queue and st.session_state.current_idx < len(st.session_state.job_queue):
-    # Only take a snippet to prevent overloading the model
-    current_job_text = st.session_state.job_queue[st.session_state.current_idx][:4000]
+    # URL Input
+    indeed_url = st.text_input("Paste Indeed Pune URL", placeholder="https://in.indeed.com/jobs?q=python...")
     
-    col_desc, col_ai = st.columns([3, 2])
-    
-    with col_desc:
-        st.info(f"Reviewing Job {st.session_state.current_idx + 1}")
-        st.markdown(f"```text\n{current_job_text[:1000]}...\n```") # UI only shows snippet
-
-    with col_ai:
-        st.subheader("🤖 Gemini 3 Verdict")
-        try:
-            with st.spinner("Analyzing..."):
-                # Simpler prompt = faster, more stable response
-                response = client.models.generate_content(
-                    model='gemini-3-flash-preview',
-                    contents=f"Analyze this Pune Python Intern job for an 8.4 CGPA student. Give Match Score, Verdict, and a quick Email Draft: {current_job_text}"
-                )
-                analysis = response.text
-                st.write(analysis)
-            
-            # Action Buttons
-            st.divider()
-            c1, c2 = st.columns(2)
-            if c1.button("✅ ACCEPT", use_container_width=True):
-                st.session_state.shortlist.append({
-                    "Job_Content": current_job_text[:200],
-                    "AI_Verdict": analysis
-                })
-                st.session_state.current_idx += 1
-                st.rerun()
-            
-            if c2.button("❌ REJECT", use_container_width=True):
-                st.session_state.current_idx += 1
-                st.rerun()
-
-        except Exception as e:
-            if "429" in str(e) or "overloaded" in str(e).lower():
-                st.warning("🚦 Model is a bit busy. Wait 5 seconds and click Refresh.")
-                if st.button("🔄 Try Again"):
+    if st.button("🚀 Start Auto-Scout"):
+        if indeed_url:
+            with st.spinner("🕵️ Scouter infiltrating Indeed..."):
+                new_leads = asyncio.run(scrape_indeed(indeed_url))
+                if new_leads:
+                    st.session_state.master_queue.extend(new_leads)
+                    st.success(f"Added {len(new_leads)} leads to Warehouse!")
                     st.rerun()
-            else:
-                st.error(f"Engine Error: {e}")
+                else:
+                    st.warning("No leads found. Check the URL or User-Agent.")
+        else:
+            st.error("Give me a URL first, Boss!")
 
-elif st.session_state.job_queue:
-    st.balloons()
-    st.success("🎯 Queue Cleared! Your battle plan is ready in the sidebar.")
-    if st.button("Restart Queue"):
-        st.session_state.job_queue = []
-        st.rerun()
+# --- 5. THE REVIEW CONVEYOR BELT ---
+if st.session_state.master_queue:
+    current_job = st.session_state.master_queue[0]
+    
+    with st.container(border=True):
+        st.subheader(f"🔍 Lead: {current_job['title']}")
+        st.write(f"🔗 [View Full Posting]({current_job['link']})")
+        
+        c1, c2, c3 = st.columns(3)
+        
+        if c1.button("✅ Shortlist"):
+            st.session_state.shortlist.append(current_job)
+            st.session_state.master_queue.pop(0)
+            st.toast("Unit moved to Shortlist!", icon="✅")
+            st.rerun()
+            
+        if c2.button("❌ Reject"):
+            st.session_state.rejected_count += 1
+            st.session_state.master_queue.pop(0)
+            st.toast("Unit discarded.", icon="🗑️")
+            st.rerun()
+
+        if c3.button("⏭️ Skip"):
+            st.session_state.master_queue.append(st.session_state.master_queue.pop(0))
+            st.rerun()
+
 else:
-    st.info("👋 System Standby. Feed the sidebar with job descriptions to begin.")
+    st.info("Warehouse is empty. Use the sidebar to scout for new leads! 🧘‍♂️")
+
+# --- 6. VIEW SHORTLIST ---
+if st.session_state.shortlist:
+    with st.expander("📝 View My Shortlist"):
+        for item in st.session_state.shortlist:
+            st.write(f"- {item['title']} ([Link]({item['link']}))")
