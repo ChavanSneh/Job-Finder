@@ -39,4 +39,5 @@ To launch the application, run:
 Bash
 
 streamlit run Job-Finder_app.py
+
 Developed by Chavan Sneh
