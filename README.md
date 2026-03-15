@@ -1,43 +1,72 @@
-# 🔍 Job-Finder: Python Automation Tool
+# 🔍 Job Scout AI
 
-A powerful web automation tool built with **Python**, **Playwright**, and **Streamlit** to streamline the job search process. This tool automates the fetching of job listings and provides a clean interface for managing your search.
+Job Scout AI is an intelligent career assistant designed to bridge the gap between your unique skill set and the evolving Pune tech job market. Instead of keyword matching, this application uses Google’s Gemini 2.5 Flash model to semantically analyze job descriptions against your personal resume.
 
-## 🚀 Features
-* **Automated Scraping**: Uses Playwright to navigate job boards and extract data.
-* **Data Management**: Cleanly processes job data using Pandas.
-* **Interactive UI**: A modern web interface built with Streamlit.
-* **CSV Export**: Download your found jobs directly to a CSV file.
+## ✨ Key Features
+
+* **Semantic Job Matching:** Goes beyond keyword searching to understand the context of your experience (RAG, Agentic AI, Cloud infrastructure).
+  
+* **AI Career Consultant:** Leverages a custom system instruction to provide strategic advice, identifying experience gaps and suggesting targeted skill improvements.
+  
+* **Resilient Infrastructure:** Built with `tenacity` for automatic exponential backoff, ensuring your API requests recover gracefully from rate limits.
+  
+* **Resume-Driven Insights:** Parses your PDF resume to provide personalized match scores and actionable feedback.
 
 ## 🛠️ Tech Stack
-* **Language**: Python 3.x
-* **Automation**: Playwright (Headless Browser)
-* **Web Framework**: Streamlit
-* **Data Analysis**: Pandas
-* **Environment**: WSL (Windows Subsystem for Linux)
 
-## 📦 Installation & Setup
+* **Core:** Python 3.x
+  
+* **AI/LLM:** Google Gen AI SDK (`google-genai`), Gemini 2.5 Flash
+  
+* **Backend:** FastAPI
+  
+* **Data Processing:** Pydantic (Schema validation), Tenacity (Retry logic)
+  
+* **Frontend:** Streamlit
 
-1. **Clone the repository**:
-   ```bash
-   git clone [https://github.com/ChavanSneh/Job-Finder.git](https://github.com/ChavanSneh/Job-Finder.git)
-   cd Job-Finder
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.10+
+  
+- A Google AI Studio API Key
+
+### Installation
+
+1. Clone the repository:
+   
+   git clone [https://github.com/your-username/job-scout-ai.git](https://github.com/your-username/job-scout-ai.git)
+   cd job-scout-ai
+   
 Create and activate a virtual environment:
 
-Bash
+python -m venv venv
 
-python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
 Install dependencies:
 
-Bash
-
 pip install -r requirements.txt
-python3 -m playwright install --with-deps
-⚔️ Usage
-To launch the application, run:
 
-Bash
+Configure your environment:
 
-streamlit run Job-Finder_app.py
+Create a .env file in the root directory.
 
-Developed by Chavan Sneh
+Add your API key: GEMINI_API_KEY=your_actual_api_key_here
+
+Running the App
+
+streamlit run app.py
+
+🧠 Intelligence Engine
+
+The core of the app is the ai_analyst.py module, which orchestrates the interaction between your profile and the market findings.
+
+🤝 Contributing
+
+Contributions are welcome! If you have ideas for adding new cloud providers, improving the resume parsing logic, or optimizing the prompt engineering, feel free to open a Pull Request.
+
+📄 License
+
+This project is open-source and available under the MIT License.
