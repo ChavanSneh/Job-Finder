@@ -1,3 +1,18 @@
+# Virtual Environments
+venv/
 .venv/
-.streamlit/secrets.toml
+env/
+ENV/
+
+# Python Cache
 __pycache__/
+*.py[cod]
+
+# IDEs & Editor configs
+.vscode/
+.idea/
+.DS_Store
+
+# Environment variables (Crucial!)
+.env
+.gitignore
