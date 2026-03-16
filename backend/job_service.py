@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from backend.sources.jsearch import JSearchProvider
-from backend.ai_analyst import analyze_jobs  # Assuming this is the correct import
+from backend.ai_analyst import analyze_jobs 
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -22,22 +22,19 @@ def get_persistent_profile():
     try:
         with open(PROFILE_PATH, "r") as f:
             data = json.load(f)
-            
-            # Normalize skills to a string for search query building
             skills_val = data.get("skills", "")
             if isinstance(skills_val, list):
                 data["skills_string"] = ", ".join(skills_val)
             else:
                 data["skills_string"] = str(skills_val)
-                
             return data
     except (json.JSONDecodeError, IOError) as e:
         logger.error(f"Failed to read/parse user_profile.json: {e}")
         return {"skills_string": "Python, FastAPI", "experience": 2}
 
-def get_job_intelligence(title, location, intel, resume_text=None):
+def get_job_intelligence(api_key, title, location, intel, resume_text=None):
     """
-    Coordinates search with fallback to persistent profile.
+    Coordinates search, now accepting api_key to pass to the analysis layer.
     """
     provider = JSearchProvider()
     stored_data = get_persistent_profile()
@@ -49,7 +46,6 @@ def get_job_intelligence(title, location, intel, resume_text=None):
     else:
         final_skills = ui_skills
         
-    # Log the search attempt so you can see exactly what is being queried
     search_query = f"{title} {final_skills}"
     logger.info(f"DEBUG: Executing JSearch query: '{search_query}' in '{location}'")
     
@@ -61,9 +57,10 @@ def get_job_intelligence(title, location, intel, resume_text=None):
             logger.error(f"Provider returned invalid type: {type(raw_jobs)}")
             raw_jobs = []
 
-        # 3. Analyze
+        # 3. Analyze - Pass the API key here!
         if raw_jobs:
             ai_insight = analyze_jobs(
+                api_key=api_key,           # <--- KEY PASSED HERE
                 job_title=title, 
                 findings=raw_jobs, 
                 intel={"exp": intel.get('exp', 2), "skills": final_skills},

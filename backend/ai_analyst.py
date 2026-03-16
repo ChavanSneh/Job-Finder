@@ -1,4 +1,3 @@
-import os
 from google import genai
 from google.genai import types
 from tenacity import (
@@ -7,24 +6,21 @@ from tenacity import (
     wait_exponential,
     retry_if_exception_type
 )
-# Note: You may need to catch specific exceptions from the Google Gen AI SDK
-# If the SDK raises a generic Exception for rate limits, adjust accordingly.
 from google.genai.errors import APIError 
 
 @retry(
-    # Stop after 5 failed attempts
     stop=stop_after_attempt(5),
-    # Wait 2^x * 1 second between retries, starting at 2s, maxing at 60s
     wait=wait_exponential(multiplier=1, min=2, max=60),
-    # Only retry if it's a transient API error (like rate limiting)
     retry=retry_if_exception_type(APIError),
     reraise=True
 )
-def analyze_jobs(job_title, findings, intel, resume_text=None):
+def analyze_jobs(api_key, job_title, findings, intel, resume_text=None):
     """
-    Uses the modern Google Gen AI SDK to analyze jobs with built-in retry logic.
+    Uses the modern Google Gen AI SDK to analyze jobs.
+    api_key is now passed explicitly to avoid environment variable issues.
     """
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    # Initialize client with the passed key
+    client = genai.Client(api_key=api_key)
     
     prompt = f"""
     You are a career consultant assisting Sneh Chavan. Sneh is a software engineer. 
@@ -41,8 +37,6 @@ def analyze_jobs(job_title, findings, intel, resume_text=None):
     Provide a concise, strategic summary for each listing.
     """
     
-    # The @retry decorator handles the execution flow here.
-    # If APIError is raised, tenacity will pause and retry automatically.
     response = client.models.generate_content(
         model='gemini-2.5-flash',
         contents=prompt,
