@@ -1,4 +1,4 @@
-### 🔍 AI Job Scout: AI-Powered Career Intelligence
+### 🔍 AI Job Scout: AI-Powered Career Intelligence v2.5.0
 
 ## A high-performance career intelligence tool built with FastAPI, Google Gemini AI, and Streamlit. This tool automates the search and strategic analysis of job listings, turning "quantity" from API results into "quality" actionable career insights.
 
